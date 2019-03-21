@@ -1,5 +1,16 @@
 # SEMA
-An Extended Semantic Evaluation Metric for AMR
+This repository contains source code of SEMA, a metric to evaluate AMR
+```
+@inproceedings{anchieta2019sema,
+    title={SEMA: an Extended Semantic Evaluation for AMR},
+    author={Anchi\^{e}ta, Rafael Torres and Pardo, Thiago Alexandre Salgueiro and Cabezudo, Marco Antonio Sobrevilla},
+    booktitle={(To appear) Proceedings of the 20th Computational Linguistics and Intelligent Text Processing},
+    year={2019},
+    editor={Gelbukh, Alexander},
+    publisher={Springer International Publishg}
+}
+```
+
 
 # Requirements
 Python (version 2.7 or later)
@@ -13,7 +24,7 @@ Test and Reference AMR files should be in PENMAN format.
 (t / tolerate-01
     :ARG0 (w / we)
     :ARG1 (c / coutry
-        :name (n / name :op1 "Japa")
-        :wiki "Japa")
+        :name (n / name :op1 "Japan")
+        :wiki "Japan")
     :duration (a / amr-unknown))
 ```

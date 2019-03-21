@@ -285,7 +285,7 @@ def main(data):
         sema.compute_sema(amr1, amr2)
     if not flag:
         precision, recall, f1 = sema.get_sema_value()
-        print('SEMA: P %.2f R %.2f F1 %.2f' % (precision, recall, f1))
+        print(f'SEMA: P {precision:.2f} R {recall:.2f} F1 {f1:.2f}')
 
 
 if __name__ == '__main__':
