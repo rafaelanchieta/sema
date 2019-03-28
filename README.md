@@ -3,7 +3,7 @@ This repository contains source code of SEMA, a metric to evaluate AMR
 ```
 @inproceedings{anchieta2019sema,
     title={SEMA: an Extended Semantic Evaluation for AMR},
-    author={Anchi\^{e}ta, Rafael Torres and Pardo, Thiago Alexandre Salgueiro and Cabezudo, Marco Antonio Sobrevilla},
+    author={Anchi\^{e}ta, Rafael Torres and Cabezudo, Marco Antonio Sobrevilla and Pardo, Thiago Alexandre Salgueiro},
     booktitle={(To appear) Proceedings of the 20th Computational Linguistics and Intelligent Text Processing},
     year={2019},
     editor={Gelbukh, Alexander},
