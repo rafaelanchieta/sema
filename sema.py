@@ -166,7 +166,7 @@ class Sema:
                                     self._get_neighbors(pos_t=pre_t, pos_g=pre_g, test_concepts=test_concepts,
                                                         gold_concepts=gold_concepts)
                                 relation = (rel_g, pre_g, pos_g)
-                                previous_node = self._get_previous_node(pre_g, gold_concepts)
+                                previous_node = self._get_previous_node(pos_g, gold_concepts)
                                 self.compute_concepts(test_concept, gold_concept, current_node, relation,
                                                       previous_node, visited)
                         else:
