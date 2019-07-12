@@ -149,36 +149,20 @@ class Sema:
         :param visited: visited triples
         :return:
         """
-        flag_inverse = False
         for rel_t, pre_t, pos_t in test_relations:
             for rel_g, pre_g, pos_g in gold_relations:
-                # if previous concepts are equal
-                if self._check_dependence(pre_t, pre_g, test_concepts, gold_concepts):
-                    # if relations are equal
-                    if rel_t == rel_g:
-                        # inverse relation
-                        if int(pre_t[-1]) > int(pos_t[-1]):
-                            flag_inverse = True
-
-                        if flag_inverse:
-                                # gets neighbors
-                                test_concept, current_node, gold_concept = \
-                                    self._get_neighbors(pos_t=pre_t, pos_g=pre_g, test_concepts=test_concepts,
-                                                        gold_concepts=gold_concepts)
-                                relation = (rel_g, pre_g, pos_g)
-                                previous_node = self._get_previous_node(pos_g, gold_concepts)
-                                self.compute_concepts(test_concept, gold_concept, current_node, relation,
-                                                      previous_node, visited)
-                        else:
-                                # gets neighbors
-                                test_concept, current_node, gold_concept = \
-                                    self._get_neighbors(pos_t=pos_t, pos_g=pos_g, test_concepts=test_concepts,
-                                                        gold_concepts=gold_concepts)
-                                relation = (rel_g, pre_g, pos_g)
-                                previous_node = self._get_previous_node(pre_g, gold_concepts)
-                                self.compute_concepts(test_concept, gold_concept, current_node, relation,
-                                                      previous_node, visited)
-            flag_inverse = False
+                # if relations are equal
+                if rel_t == rel_g:
+                    # if previous concepts are equal
+                    if self._check_dependence(pre_t, pre_g, test_concepts, gold_concepts):
+                        # gets neighbors
+                        test_concept, current_node, gold_concept = self._get_neighbors(pos_t=pos_t, pos_g=pos_g,
+                                                                                       test_concepts=test_concepts,
+                                                                                       gold_concepts=gold_concepts)
+                        relation = (rel_g, pre_g, pos_g)
+                        previous_node = self._get_previous_node(pre_g, gold_concepts)
+                        self.compute_concepts(test_concept, gold_concept, current_node, relation, previous_node,
+                                              visited)
 
     def compute_concepts(self, test_concepts, gold_concepts, current_node, relation, previous_node, visited):
         """
