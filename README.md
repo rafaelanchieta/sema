@@ -13,7 +13,7 @@ This repository contains source code of SEMA, a metric to evaluate AMR
 
 
 # Requirements
-Python (version 2.7 or later)
+Python (version 3.6 or later)
 
 # Usage
 `python sema.py -t parsed_file.txt -g reference_file.txt`
