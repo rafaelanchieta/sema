@@ -186,8 +186,13 @@ class Sema:
                         self.m += 1
                         visited.append(previous_node)
                     if current_node in visited and previous_node in visited and relation not in visited:
-                        self.m += 1
-                        visited.append(relation)
+                        flag = False
+                        for triple in visited:
+                            if relation[1] == triple[1] and relation[2] == triple[2]:
+                                flag = True
+                        if not flag:
+                            self.m += 1
+                            visited.append(relation)
 
     def compute_attributes(self, test_attributes, gold_attributes, test_concepts, gold_concepts, visited):
         """
