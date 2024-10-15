@@ -110,7 +110,7 @@ class Sema:
         """
         test_concept = [(rel, var, nod) for rel, var, nod in test_concepts if var == pos_t]
         gold_concept = [(rel, var, nod) for rel, var, nod in gold_concepts if var == pos_g]
-        return [test_concept[0][2]], gold_concept[0], [gold_concept[0][2]]
+        return [test_concept[0][2]], test_concept[0], [gold_concept[0][2]]
 
     @staticmethod
     def remove_top_relation(test_attributes, gold_attributes):
@@ -159,8 +159,8 @@ class Sema:
                         test_concept, current_node, gold_concept = self._get_neighbors(pos_t=pos_t, pos_g=pos_g,
                                                                                        test_concepts=test_concepts,
                                                                                        gold_concepts=gold_concepts)
-                        relation = (rel_g, pre_g, pos_g)
-                        previous_node = self._get_previous_node(pre_g, gold_concepts)
+                        relation = (rel_t, pre_t, pos_t)  # (rel_g, pre_g, pos_g)
+                        previous_node = self._get_previous_node(pre_t, test_concepts)  # (pre_g, gold_concepts)
                         self.compute_concepts(test_concept, gold_concept, current_node, relation, previous_node,
                                               visited)
 
