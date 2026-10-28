@@ -5,6 +5,7 @@ This script calculates SEMA score between two AMRs
 import argparse
 import codecs
 import logging
+from collections import Counter, defaultdict
 
 from amr import AMR
 
@@ -38,17 +39,23 @@ class Sema:
         """
         test_concepts, test_attributes, test_relations = amr_test.get_triples()
         gold_concepts, gold_attributes, gold_relations = amr_gold.get_triples()
-        visited = []
 
         # remove TOP relation
         test_attributes, gold_attributes = self.remove_top_relation(test_attributes, gold_attributes)
 
-        # test_relations, gold_relations = self.remove_duplicate_relation(test_relations, gold_relations)
-        self.compute_root(test_concepts[0][2], gold_concepts[0][2], visited)
-        self.compute_relations(test_relations, gold_relations, test_concepts, gold_concepts, visited)
-        self.compute_attributes(test_attributes, gold_attributes, test_concepts, gold_concepts, visited)
+        node_alignment = self._align_nodes(
+            test_concepts, test_relations, test_attributes,
+            gold_concepts, gold_relations, gold_attributes
+        )
+        self.m += self._count_matching_triples(
+            test_concepts, test_relations, test_attributes,
+            gold_concepts, gold_relations, gold_attributes,
+            node_alignment
+        )
         self.c += self._get_total_triples(test_concepts, test_relations, test_attributes)
         self.t += self._get_total_triples(gold_concepts, gold_relations, gold_attributes)
+        print(f'Correct: {self.m} Total: {self.t} Produced: {self.c}')
+        print(f'Total test triples: {test_attributes}')
 
     @staticmethod
     def remove_duplicate_relation(test_relations, gold_relations):
@@ -125,6 +132,177 @@ class Sema:
         del test_attributes[index1]
         del gold_attributes[index2]
         return test_attributes, gold_attributes
+
+    @staticmethod
+    def _maximum_weight_assignment(weights):
+        """Return the best column assignment for each row (rows <= columns)."""
+        row_count = len(weights)
+        if row_count == 0:
+            return []
+        column_count = len(weights[0])
+        max_weight = max(max(row) for row in weights)
+        costs = [[max_weight - weight for weight in row] for row in weights]
+        row_potential = [0] * (row_count + 1)
+        column_potential = [0] * (column_count + 1)
+        matched_row = [0] * (column_count + 1)
+        previous_column = [0] * (column_count + 1)
+
+        for row in range(1, row_count + 1):
+            matched_row[0] = row
+            current_column = 0
+            min_cost = [float('inf')] * (column_count + 1)
+            used = [False] * (column_count + 1)
+            while True:
+                used[current_column] = True
+                current_row = matched_row[current_column]
+                delta = float('inf')
+                next_column = 0
+                for column in range(1, column_count + 1):
+                    if used[column]:
+                        continue
+                    cost = (
+                        costs[current_row - 1][column - 1]
+                        - row_potential[current_row]
+                        - column_potential[column]
+                    )
+                    if cost < min_cost[column]:
+                        min_cost[column] = cost
+                        previous_column[column] = current_column
+                    if min_cost[column] < delta:
+                        delta = min_cost[column]
+                        next_column = column
+                for column in range(column_count + 1):
+                    if used[column]:
+                        row_potential[matched_row[column]] += delta
+                        column_potential[column] -= delta
+                    else:
+                        min_cost[column] -= delta
+                current_column = next_column
+                if matched_row[current_column] == 0:
+                    break
+            while True:
+                next_column = previous_column[current_column]
+                matched_row[current_column] = matched_row[next_column]
+                current_column = next_column
+                if current_column == 0:
+                    break
+
+        assignment = [0] * row_count
+        for column in range(1, column_count + 1):
+            if matched_row[column] != 0:
+                assignment[matched_row[column] - 1] = column - 1
+        return assignment
+
+    @classmethod
+    def _align_nodes(cls, test_concepts, test_relations, test_attributes,
+                     gold_concepts, gold_relations, gold_attributes):
+        """Build a one-to-one node mapping, preferring structurally similar nodes."""
+        test_values = {var: value for _, var, value in test_concepts}
+        gold_values = {var: value for _, var, value in gold_concepts}
+
+        def node_features(concepts, relations, attributes):
+            values = {var: value for _, var, value in concepts}
+            attributes_by_node = defaultdict(Counter)
+            outgoing = defaultdict(Counter)
+            incoming = defaultdict(Counter)
+            outgoing_context = defaultdict(Counter)
+            incoming_context = defaultdict(Counter)
+            for relation, node, value in attributes:
+                attributes_by_node[node][(relation, value)] += 1
+            for relation, parent, child in relations:
+                outgoing[parent][(relation, values[child])] += 1
+                incoming[child][(relation, values[parent])] += 1
+                outgoing_context[parent][
+                    (relation, values[child], tuple(sorted(attributes_by_node[child].items())))
+                ] += 1
+                incoming_context[child][
+                    (relation, values[parent], tuple(sorted(attributes_by_node[parent].items())))
+                ] += 1
+            return attributes_by_node, outgoing, incoming, outgoing_context, incoming_context
+
+        test_features = node_features(test_concepts, test_relations, test_attributes)
+        gold_features = node_features(gold_concepts, gold_relations, gold_attributes)
+
+        def similarity(test_node, gold_node):
+            score = 1
+            for feature_index, weight in ((0, 5), (1, 2), (2, 1), (3, 4), (4, 2)):
+                test_feature = test_features[feature_index][test_node]
+                gold_feature = gold_features[feature_index][gold_node]
+                score += weight * sum((test_feature & gold_feature).values())
+            return score
+
+        alignment = {}
+        test_root = test_concepts[0][1]
+        gold_root = gold_concepts[0][1]
+        if test_values[test_root] == gold_values[gold_root]:
+            alignment[test_root] = gold_root
+
+        test_nodes_by_concept = defaultdict(list)
+        gold_nodes_by_concept = defaultdict(list)
+        for _, node, concept in test_concepts:
+            if node not in alignment:
+                test_nodes_by_concept[concept].append(node)
+        for _, node, concept in gold_concepts:
+            if node not in alignment.values():
+                gold_nodes_by_concept[concept].append(node)
+
+        for concept, test_nodes in test_nodes_by_concept.items():
+            gold_nodes = gold_nodes_by_concept.get(concept, [])
+            if not gold_nodes:
+                continue
+            weights = [
+                [similarity(test_node, gold_node) for gold_node in gold_nodes]
+                for test_node in test_nodes
+            ]
+            if len(test_nodes) <= len(gold_nodes):
+                assignment = cls._maximum_weight_assignment(weights)
+                alignment.update({
+                    test_nodes[row]: gold_nodes[column]
+                    for row, column in enumerate(assignment)
+                })
+            else:
+                transposed = [
+                    [weights[row][column] for row in range(len(test_nodes))]
+                    for column in range(len(gold_nodes))
+                ]
+                assignment = cls._maximum_weight_assignment(transposed)
+                alignment.update({
+                    test_nodes[column]: gold_nodes[row]
+                    for row, column in enumerate(assignment)
+                })
+        return alignment
+
+    @staticmethod
+    def _count_matching_triples(test_concepts, test_relations, test_attributes,
+                                gold_concepts, gold_relations, gold_attributes,
+                                alignment):
+        """Count exact triples after translating test nodes to aligned gold nodes."""
+        def count_matches(source, target, translate):
+            available = Counter(target)
+            count = 0
+            for triple in source:
+                translated = translate(triple)
+                if translated is not None and available[translated]:
+                    available[translated] -= 1
+                    count += 1
+            return count
+
+        matched = count_matches(
+            test_concepts, gold_concepts,
+            lambda triple: (triple[0], alignment[triple[1]], triple[2])
+            if triple[1] in alignment else None
+        )
+        matched += count_matches(
+            test_relations, gold_relations,
+            lambda triple: (triple[0], alignment[triple[1]], alignment[triple[2]])
+            if triple[1] in alignment and triple[2] in alignment else None
+        )
+        matched += count_matches(
+            test_attributes, gold_attributes,
+            lambda triple: (triple[0], alignment[triple[1]], triple[2])
+            if triple[1] in alignment else None
+        )
+        return matched
 
     def compute_root(self, test_root, gold_root, visited):
         """
